@@ -1,39 +1,29 @@
 import board
+import rotaryio
 import digitalio
-import time
 
-# Setup encoder pins
-clk = digitalio.DigitalInOut(board.GP2) # pin 4
-clk.direction = digitalio.Direction.INPUT
-clk.pull = digitalio.Pull.UP
+encoder = rotaryio.IncrementalEncoder(
+    board.GP2,
+    board.GP3
+)
 
-dt = digitalio.DigitalInOut(board.GP3) # pin 5
-dt.direction = digitalio.Direction.INPUT
-dt.pull = digitalio.Pull.UP
+button = digitalio.DigitalInOut(board.GP4)
+button.direction = digitalio.Direction.INPUT
+button.pull = digitalio.Pull.UP
 
-# Optional switch
-sw = digitalio.DigitalInOut(board.GP4) # pin 6
-sw.direction = digitalio.Direction.INPUT
-sw.pull = digitalio.Pull.UP
+last_position = encoder.position
+last_button = button.value
 
-# Track last state
-last_clk = clk.value
-position = 0
+def update(press, turn):
+    global last_position, last_button
 
-while True:
-    current_clk = clk.value
-    # Detect rising edge on CLK
-    if last_clk == 0 and current_clk == 1:
-        if dt.value != current_clk:
-            position += 1  # Clockwise
-        else:
-            position -= 1  # Counter-clockwise
-        print("Position:", position)
-    
-    # Optional: detect button press
-    if not sw.value:
-        print("Button pressed!")
-        time.sleep(0.2)  # debounce delay
+    pos = encoder.position
 
-    last_clk = current_clk
-    time.sleep(0.001)  # small delay
+    if pos != last_position:
+        turn(pos - last_position)
+        last_position = pos
+
+    if last_button and not button.value:
+        press()
+
+    last_button = button.value
