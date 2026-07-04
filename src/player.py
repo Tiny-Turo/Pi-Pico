@@ -7,7 +7,7 @@ player = None
 
 class Player:
   def __init__(self, group):
-    self.width = 20.00
+    self.width = 20.0
     self.height = 15.0
   
     x = 64 - self.width/2
