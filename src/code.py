@@ -9,7 +9,7 @@ import player as player
 import rotary_encoder as rotary_encoder
 
 def press():
-    player.shoot_ball(screen.group)
+    print("hi")
 
 def turn(dir):
     player.update_position(dir)
@@ -21,6 +21,5 @@ load()
 
 while True:
     player.update()
-    player.update_balls(screen.group)
     rotary_encoder.update(press, turn)
     time.sleep(0.01)
