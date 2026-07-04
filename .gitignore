@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/*.log
+
+# CircuitPython device mount (DON'T track runtime device)
+CIRCUITPY/
