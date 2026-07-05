@@ -8,14 +8,14 @@ import screen as screen
 import players as players
 import rotary_encoder as rotary_encoder
 
-has_started = False
+has_started = True
 
 def press():
     global has_started
 
     if not has_started:
         players.spawn(screen.group)
-        print(players.players_amount)
+        print("Players: " + str(players.players_amount))
         has_started = True
     else:
         players.players[players.current_player].submit(screen.group)
@@ -24,11 +24,11 @@ def rotate(dir):
     if not has_started:
         players.players_amount += dir
         if players.players_amount <= 2: players.players_amount = 2
-        print(players.players_amount)
     else:
-        players.players[players.current_player].rotate(dir)
+        players.players[players.current_player].rotate(dir, screen.group)
 
 def load():
+    players.spawn(screen.group)
     print("Hello World!")
 
 load()

@@ -13,24 +13,26 @@ players = []
 
 # Variables which are the same for every player
 PLAYER_RADIUS = 10
-MOVE_BY = 60
+MOVE_BY = 50
+
+STEP = math.pi / 48
 
 MIN_DISCOVER_WIDTH = 10
-MAX_DISCOVER_WIDTH = math.pi
+MAX_DISCOVER_WIDTH = math.pi * 5/8
 
-DISCOVERY_AREA = 300
+DISCOVERY_AREA = 700
 
 
-PLAYER_COLORS = [0xCFAF3C,0x2D98BB,0xD83E3E,0x883ED8,0x6BAB4B]
+PLAYER_COLORS = [0x2D98BB,0xCFAF3C,0xD83E3E,0x883ED8,0x6BAB4B]
 
 class Sector:
   def __init__(self, x, y, start_angle, end_angle, color, group):
-    self.radius = self.calculate_radius_of_sector(abs(start_angle - end_angle))
-
     self.x = x
     self.y = y
-    self.start_angle = start_angle
-    self.end_angle = end_angle
+    self.start_angle = min(start_angle, end_angle)
+    self.end_angle = max(start_angle, end_angle)
+
+    self.radius = self.calculate_radius_of_sector(abs(self.end_angle - self.start_angle))
 
     self.color = color
 
@@ -38,9 +40,7 @@ class Sector:
 
   def add_sector_polygon(self, group):
     steps = 60
-    sweep = self.end_angle - self.start_angle
-    if sweep < 0:
-        sweep += 2 * math.pi
+    sweep = abs(self.end_angle - self.start_angle)
 
     d = sweep / steps
     points = [(int(self.x), int(self.y))]  # center
@@ -52,8 +52,8 @@ class Sector:
     # back to center to close shape
     points.append((int(self.x), int(self.y)))
 
-    polygon = FilledPolygon(points=points, fill=self.color, outline=self.color)
-    group.append(polygon)
+    self.polygon = FilledPolygon(points=points, fill=self.color, outline=self.color)
+    group.append(self.polygon)
 
 
 
@@ -91,7 +91,7 @@ class Player:
 
     self.x = random.uniform(0, 100)
     self.y = random.uniform(0, 100)
-    self.angle =2
+    self.angle = 0
 
     self.area = []
     self.color = PLAYER_COLORS[i % len(PLAYER_COLORS)]
@@ -100,32 +100,49 @@ class Player:
     self.circle.x = int(self.x)
     self.circle.y = int(self.y)
 
-    self.line = Line(int(self.x) + PLAYER_RADIUS, int(self.y) + PLAYER_RADIUS, int(self.x + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), color=0x000000);
-    self.discoverStart = None
-    self.discoverEnd = None
+    self.line = Line(int(self.x) + PLAYER_RADIUS, int(self.y) + PLAYER_RADIUS, int(self.x + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), color=0x000000);
+    self.sector = None
+
+    self.discover_start = None
+    self.discover_end = None
 
     group.append(self.circle)
     group.append(self.line)
 
+  def update_line(self, group):
+    group.remove(self.line)
+    self.line = Line(int(self.x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(self.x  + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), color=0x000000);
+    group.append(self.line)
   
-  def rotate(self, add):
-      self.angle += add * math.pi/12
-      print(self.angle)
+  def rotate(self, add, group):
+      self.angle += add * STEP
+      self.update_line(group)
+
+      if current_stage == "Discover":
+        if (not self.discover_start == None) and (self.discover_end == None):
+          if abs(self.discover_start - self.angle) >= MAX_DISCOVER_WIDTH:
+            if self.discover_start < self.angle: self.angle = self.discover_start + MAX_DISCOVER_WIDTH
+            if self.discover_start > self.angle: self.angle = self.discover_start - MAX_DISCOVER_WIDTH
+
+          if not abs(self.discover_start - self.angle) < STEP:
+            if self.sector:
+              group.remove(self.sector.polygon)
+            self.sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.angle, self.color, group)
 
   def submit(self, group):
     global current_stage, current_player
 
-    print(current_stage)
     if current_stage == "Discover":
-      if not self.discoverStart:
+      if self.discover_start == None:
         # Set the discover start
-        self.discoverStart = self.angle
-      else: 
-        self.discoverEnd = self.angle
+        self.discover_start = self.angle
+        print("Discover Start: "+ str(self.discover_start))
+      elif abs(self.discover_start - self.angle) > STEP: 
+        self.discover_end = self.angle
+        print("Discover End: "+ str(self.discover_end))
+        print("Discover Start: "+ str(self.discover_start))
 
-        print(self.discoverStart - self.discoverEnd)
-        # SUBMIT FIRST, then reset all the variables to ready for next round
-        sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discoverStart, self.discoverEnd, self.color, group)
+        sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.discover_end, self.color, group)
         self.area.append(sector)
 
         # Check if you've hit any players
@@ -135,15 +152,14 @@ class Player:
               print("GOOD JOB: COLLISION")
 
         # Reset variables
-        self.discoverStart = None
-        self.angle = 0
-        self.discoverWidth = 0
+        self.discover_start = None
+        self.discover_end = None
 
         current_stage = "Move"
     elif current_stage == "Move":
       # Update the acctual player
-      self.x += MOVE_BY * math.sin(self.angle)
-      self.y += MOVE_BY * math.cos(self.angle)
+      self.x += MOVE_BY * math.cos(self.angle)
+      self.y += MOVE_BY * math.sin(self.angle)
 
       # Check if you've hit any areas 
       for player in players:
@@ -158,8 +174,11 @@ class Player:
 
       # Reset the angle
       self.angle = 0
-      current_stage = "Change"
 
+      self.circle.x = 1000
+      self.line.x = 1000
+
+      current_stage = "Change"
     elif current_stage == "Change":
       current_player += 1
       current_player = current_player % len(players)
@@ -174,6 +193,7 @@ class Player:
           player.line.x = int(player.x + PLAYER_RADIUS / 2)
 
       current_stage = "Discover"
+    self.update_line(group)
 
 def load(group):
   print("hi")
@@ -181,9 +201,7 @@ def load(group):
 def update(group):
   global players
   current = players[current_player]
-  group.remove(current.line)
-  current.line = Line(int(current.x + PLAYER_RADIUS), int(current.y + PLAYER_RADIUS), int(current.x  + PLAYER_RADIUS + MOVE_BY * math.sin(current.angle)), int(current.y + PLAYER_RADIUS + MOVE_BY * math.cos(current.angle)), color=0x000000);
-  group.append(current.line)
+
 
 def spawn(group):
   for i in range(0, players_amount):
