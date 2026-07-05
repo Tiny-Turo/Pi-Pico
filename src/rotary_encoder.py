@@ -14,13 +14,13 @@ button.pull = digitalio.Pull.UP
 last_position = encoder.position
 last_button = button.value
 
-def update(press, turn):
+def update(press, rotate):
     global last_position, last_button
 
     pos = encoder.position
 
     if pos != last_position:
-        turn(pos - last_position)
+        rotate(pos - last_position)
         last_position = pos
 
     if last_button and not button.value:

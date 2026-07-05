@@ -5,21 +5,32 @@
 
 import time
 import screen as screen 
-import player as player
+import players as players
 import rotary_encoder as rotary_encoder
 
-def press():
-    print("hi")
+has_started = False
 
-def turn(dir):
-    player.update_position(dir)
+def press():
+    if not has_started:
+        players.spawn(screen.group)
+    else:
+        players.players[players.current_player].submit()
+    print("pressed")
+
+def rotate(dir):
+    if not has_started:
+        players.players_amount += 1
+        if players.players_amount <= 2: players.players_amount = 2
+    else:
+        players.players[players.current_player].rotate()
 
 def load():
-    player.load(screen.group)
+    print("Hello World!")
 
 load()
 
 while True:
-    player.update()
-    rotary_encoder.update(press, turn)
+    rotary_encoder.update(press, rotate)
+    if has_started:
+        players.update()
     time.sleep(0.01)
