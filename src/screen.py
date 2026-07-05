@@ -27,5 +27,5 @@ display = ST7735R(
 group = displayio.Group()
 display.root_group = group
 
-background = Rect(0, 0, 128, 160, fill=0x30323D) 
+background = Rect(0, 0, 128, 160, fill=0xCDCDCD) 
 group.append(background)

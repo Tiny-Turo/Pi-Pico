@@ -20,7 +20,7 @@ def update(press, rotate):
     pos = encoder.position
 
     if pos != last_position:
-        rotate(pos - last_position)
+        rotate(last_position - pos)
         last_position = pos
 
     if last_button and not button.value:

@@ -36,5 +36,5 @@ load()
 while True:
     rotary_encoder.update(press, rotate)
     if has_started:
-        players.update()
+        players.update(screen.group)
     time.sleep(0.01)

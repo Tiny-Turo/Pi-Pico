@@ -96,11 +96,11 @@ class Player:
     self.area = []
     self.color = PLAYER_COLORS[i % len(PLAYER_COLORS)]
 
-    self.circle = Circle(int(self.x), int(self.y), PLAYER_RADIUS, fill=self.color)
-    self.line = Line(int(self.x), int(self.y), int(self.x + MOVE_BY * math.sin(self.angle)), int(self.y + MOVE_BY * math.cos(self.angle)), color=self.color)
-    self.line.stroke = 30
+    self.circle = Circle(0, 0, PLAYER_RADIUS, fill=self.color)
+    self.circle.x = int(self.x)
+    self.circle.y = int(self.y)
 
-
+    self.line = Line(int(self.x) + PLAYER_RADIUS, int(self.y) + PLAYER_RADIUS, int(self.x + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), color=0x000000);
     self.discoverStart = None
     self.discoverEnd = None
 
@@ -125,7 +125,7 @@ class Player:
 
         print(self.discoverStart - self.discoverEnd)
         # SUBMIT FIRST, then reset all the variables to ready for next round
-        sector = Sector(self.x, self.y, self.discoverStart, self.discoverEnd, self.color, group)
+        sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discoverStart, self.discoverEnd, self.color, group)
         self.area.append(sector)
 
         # Check if you've hit any players
@@ -168,22 +168,23 @@ class Player:
       for player in players:
         if player.index != current_player:
           player.circle.x = 1000
+          player.line.x = 1000
         else:
           player.circle.x = int(player.x)
+          player.line.x = int(player.x + PLAYER_RADIUS / 2)
 
       current_stage = "Discover"
 
 def load(group):
   print("hi")
 
-def update():
+def update(group):
   global players
   current = players[current_player]
-  current.line.x = int(current.x + PLAYER_RADIUS / 2)
-  current.line.y = int(current.y + PLAYER_RADIUS / 2)
-  current.line.x1 = int(current.x + MOVE_BY * math.sin(current.angle)+ PLAYER_RADIUS / 2)
-  current.line.y1 = int(current.y + MOVE_BY * math.cos(current.angle) + PLAYER_RADIUS / 2)
-  
+  group.remove(current.line)
+  current.line = Line(int(current.x + PLAYER_RADIUS), int(current.y + PLAYER_RADIUS), int(current.x  + PLAYER_RADIUS + MOVE_BY * math.sin(current.angle)), int(current.y + PLAYER_RADIUS + MOVE_BY * math.cos(current.angle)), color=0x000000);
+  group.append(current.line)
+
 def spawn(group):
   for i in range(0, players_amount):
     players.append(Player(i, group))
