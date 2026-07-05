@@ -87,7 +87,7 @@ class Player:
       current_player += 1
 
       current_stage = "Discover"
-      
+
 def load(group):
 
 def update():
@@ -95,3 +95,26 @@ def update():
 def spawn(group):
   for i in range(0, players_amount):
     players.append(Player(i, group))
+
+def is_colliding(player, sector):
+  # Calculate distance to player from centers
+  dx = sector.x - player.x
+  dy = sector.y - player.y
+  distance = math.sqrt(dx * dx + dy * dy);
+
+  # Calculate angle from center of sector to player center
+  angleToPlayerNorm = (math.atan2(dy, dx) + math.pi * 2) % (math.pi * 2)
+
+  # Calculate angle from center of sector to player edges
+  dx1 = sector.x - (player.x + math.cos(angleToPlayerNorm + math.pi / 2) * PLAYER_RADIUS)
+  dy1 = sector.y - (player.y + math.sin(angleToPlayerNorm + math.pi / 2) * PLAYER_RADIUS);
+  ang1 = (math.atan2(dy1, dx1) + math.pi * 2) % (math.pi * 2);
+
+  dx2 = sector.x - (player.x + math.cos(angleToPlayerNorm - math.pi / 2) * PLAYER_RADIUS)
+  dy2 = sector.y - (player.y + math.sin(angleToPlayerNorm - math.pi / 2) * PLAYER_RADIUS);
+  ang2 = (math.atan2(dy2, dx2) + math.pi * 2) % (math.pi * 2);
+
+  is_angles_right = (ang1 < sector.endAngle and ang1 > sector.startAngle) or (ang2 < sector.endAngle and ang2 > sector.startAngle)
+  has_collided = (is_angles_right and distance < PLAYER_RADIUS + sector.radius) or distance < PLAYER_RADIUS
+
+  return has_collided
