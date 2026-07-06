@@ -24,7 +24,9 @@ DISCOVERY_AREA = 700
 
 
 PLAYER_COLORS = [0x2D98BB,0xCFAF3C,0xD83E3E,0x883ED8,0x6BAB4B]
+AREA_COLORS = [0x3f7893,0xa18d40,0x9f3c37,0x6535a7,0x618846]
 
+sector_draw_layer = 1
 class Sector:
   def __init__(self, x, y, start_angle, end_angle, color, group):
     self.x = x
@@ -39,6 +41,7 @@ class Sector:
     self.add_sector_polygon(group)
 
   def add_sector_polygon(self, group):
+    global sector_draw_layer
     steps = 60
     sweep = abs(self.end_angle - self.start_angle)
 
@@ -53,7 +56,8 @@ class Sector:
     points.append((int(self.x), int(self.y)))
 
     self.polygon = FilledPolygon(points=points, fill=self.color, outline=self.color)
-    group.append(self.polygon)
+    group.insert(sector_draw_layer, self.polygon)
+    sector_draw_layer += 1
 
 
 
@@ -93,7 +97,7 @@ class Arrow:
 
     self.color = color
 
-    self.points = self._calculate_points(x1, y1, x2, y2)
+    self.points = self.calculate_points(x1, y1, x2, y2)
 
     self.polygon = FilledPolygon(
         points=self.points,
@@ -101,26 +105,7 @@ class Arrow:
         fill=color,
     )
 
-  # def _calculate_points(self, x1, y1, x2, y2):
-  #   dx = x2 - x1
-  #   dy = y2 - y1
-  #   length = math.sqrt(dx * dx + dy * dy)
-
-  #   if length == 0:
-  #       return [(x1, y1)] * 4
-
-  #   # Unit perpendicular vector
-  #   px = -(dy / length) * (self.width / 2)
-  #   py = (dx / length) * (self.width / 2)
-
-  #   return [
-  #       (int(x1 + px), int(y1 + py)),
-  #       (int(x2 + px), int(y2 + py)),
-  #       (int(x2 - px), int(y2 - py)),
-  #       (int(x1 - px), int(y1 - py)),
-  #   ]
-
-  def _calculate_points(self, x1, y1, x2, y2):
+  def calculate_points(self, x1, y1, x2, y2):
     dx = x2 - x1
     dy = y2 - y1
     length = math.sqrt(dx * dx + dy * dy)
@@ -155,7 +140,7 @@ class Arrow:
     ]
 
   def set_endpoints(self, x1, y1, x2, y2):
-    self.points[:] = self._calculate_points(x1, y1, x2, y2)
+    self.points[:] = self.calculate_points(x1, y1, x2, y2)
     self.polygon.points = self.points
 
 class Player:
@@ -196,6 +181,8 @@ class Player:
     group.append(self.arrow.polygon)
   
   def rotate(self, add, group):
+      global sector_draw_layer
+
       if current_stage == "Change":
         return
       self.angle += add * STEP
@@ -209,8 +196,9 @@ class Player:
 
           if not abs(self.discover_start - self.angle) < STEP:
             if self.sector:
+              sector_draw_layer -= 1
               group.remove(self.sector.polygon)
-            self.sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.angle, self.color, group)
+            self.sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.angle, 0x292b3d, group)
 
   def submit(self, group):
     global current_stage, current_player
@@ -225,7 +213,7 @@ class Player:
         print("Discover End: "+ str(self.discover_end))
         print("Discover Start: "+ str(self.discover_start))
 
-        sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.discover_end, self.color, group)
+        sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.discover_end, AREA_COLORS[self.index % len(AREA_COLORS)], group)
         self.area.append(sector)
 
         # Check if you've hit any players
