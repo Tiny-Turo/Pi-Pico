@@ -1,12 +1,15 @@
 import random, math
 from adafruit_display_shapes.circle import Circle
-from adafruit_display_shapes.arc import Arc
 from adafruit_display_shapes.filled_polygon import FilledPolygon
-from adafruit_display_shapes.line import Line
+from adafruit_display_text.label import Label
+import terminalio
+
 
 players_amount = 2
 current_player = 0
 current_stage = "Discover" #  Discover, Move Change
+
+change_player_text = None
 
 # List of all players
 players = []
@@ -25,6 +28,7 @@ DISCOVERY_AREA = 700
 
 PLAYER_COLORS = [0x2D98BB,0xCFAF3C,0xD83E3E,0x883ED8,0x6BAB4B]
 AREA_COLORS = [0x3f7893,0xa18d40,0x9f3c37,0x6535a7,0x618846]
+COLOR_NAME = ["Blue", "Yellow", "Red", "Purple", "Green"]
 
 sector_draw_layer = 1
 class Sector:
@@ -201,7 +205,7 @@ class Player:
             self.sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.angle, 0x292b3d, group)
 
   def submit(self, group):
-    global current_stage, current_player
+    global current_stage, current_player, change_player_text
 
     if current_stage == "Discover":
       if self.discover_start == None:
@@ -252,6 +256,16 @@ class Player:
 
       self.update_arrow(group, 1000)
       current_stage = "Change"
+
+      change_player_text = Label(
+        terminalio.FONT,
+        text= COLOR_NAME[((self.index+1) % len(players)) % len(COLOR_NAME)]+"'s turn!",
+        color=0xFFFFFF,
+        x=10,
+        y=20
+      )
+
+      group.append(change_player_text)
     elif current_stage == "Change":
       current_player += 1
       current_player = current_player % len(players)
@@ -265,17 +279,25 @@ class Player:
           player.circle.x = int(player.x)
           player.update_arrow(group)
 
+      group.remove(change_player_text)
       current_stage = "Discover"
     
 
 def load(group):
   print("hi")
 
+def first_round(group):  
+  for player in players:
+        if player.index != current_player:
+          player.circle.x = 1000
+          player.update_arrow(group, 1000)
+        else:
+          player.circle.x = int(player.x)
+          player.update_arrow(group)
+
+
 def update(group):
-  global players
-  current = players[current_player]
-
-
+  global change_player_text
 def spawn(group):
   for i in range(0, players_amount):
     players.append(Player(i, group))
