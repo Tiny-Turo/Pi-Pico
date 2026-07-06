@@ -85,6 +85,79 @@ class Sector:
 
     return has_collided
 
+class Arrow:
+  def __init__(self, x1, y1, x2, y2, color, width=3, head_width=9, head_length=6):
+    self.width = width
+    self.head_width = head_width
+    self.head_length = head_length
+
+    self.color = color
+
+    self.points = self._calculate_points(x1, y1, x2, y2)
+
+    self.polygon = FilledPolygon(
+        points=self.points,
+        outline=color,
+        fill=color,
+    )
+
+  # def _calculate_points(self, x1, y1, x2, y2):
+  #   dx = x2 - x1
+  #   dy = y2 - y1
+  #   length = math.sqrt(dx * dx + dy * dy)
+
+  #   if length == 0:
+  #       return [(x1, y1)] * 4
+
+  #   # Unit perpendicular vector
+  #   px = -(dy / length) * (self.width / 2)
+  #   py = (dx / length) * (self.width / 2)
+
+  #   return [
+  #       (int(x1 + px), int(y1 + py)),
+  #       (int(x2 + px), int(y2 + py)),
+  #       (int(x2 - px), int(y2 - py)),
+  #       (int(x1 - px), int(y1 - py)),
+  #   ]
+
+  def _calculate_points(self, x1, y1, x2, y2):
+    dx = x2 - x1
+    dy = y2 - y1
+    length = math.sqrt(dx * dx + dy * dy)
+
+    if length == 0:
+        return [(x1, y1)] * 7
+
+    # Unit vectors
+    ux = dx / length
+    uy = dy / length
+
+    # Perpendicular
+    px = -uy
+    py = ux
+
+    shaft = self.width / 2
+    head_width = self.head_width
+    head_length = self.head_length
+
+    # Base of the arrow head
+    hx = x2 - ux * head_length
+    hy = y2 - uy * head_length
+
+    return [
+        (int(x1 + px * shaft), int(y1 + py * shaft)),            # Back left
+        (int(hx + px * shaft), int(hy + py * shaft)),            # Shaft left
+        (int(hx + px * head_width / 2), int(hy + py * head_width / 2)),  # Head left
+        (int(x2), int(y2)),                                      # Tip
+        (int(hx - px * head_width / 2), int(hy - py * head_width / 2)),  # Head right
+        (int(hx - px * shaft), int(hy - py * shaft)),            # Shaft right
+        (int(x1 - px * shaft), int(y1 - py * shaft)),            # Back right
+    ]
+
+  def set_endpoints(self, x1, y1, x2, y2):
+    self.points[:] = self._calculate_points(x1, y1, x2, y2)
+    self.polygon.points = self.points
+
 class Player:
   def __init__(self, i, group):
     self.index = i
@@ -100,23 +173,33 @@ class Player:
     self.circle.x = int(self.x)
     self.circle.y = int(self.y)
 
-    self.line = Line(int(self.x) + PLAYER_RADIUS, int(self.y) + PLAYER_RADIUS, int(self.x + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), color=0x000000);
+    self.arrow = None
+
+    self.update_arrow(group)
+
     self.sector = None
 
     self.discover_start = None
     self.discover_end = None
 
     group.append(self.circle)
-    group.append(self.line)
 
-  def update_line(self, group):
-    group.remove(self.line)
-    self.line = Line(int(self.x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(self.x  + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), color=0x000000);
-    group.append(self.line)
+
+  def update_arrow(self, group, x=None):
+    if self.arrow:
+      group.remove(self.arrow.polygon)
+    
+    if x == None:
+      self.arrow = Arrow(int(self.x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(self.x  + PLAYER_RADIUS + MOVE_BY/2 * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY/2 * math.sin(self.angle)), self.color);
+    else: self.arrow = Arrow(int(x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(x  + PLAYER_RADIUS + MOVE_BY/2 * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY/2 * math.sin(self.angle)), self.color);
+ 
+    group.append(self.arrow.polygon)
   
   def rotate(self, add, group):
+      if current_stage == "Change":
+        return
       self.angle += add * STEP
-      self.update_line(group)
+      self.update_arrow(group)
 
       if current_stage == "Discover":
         if (not self.discover_start == None) and (self.discover_end == None):
@@ -156,6 +239,8 @@ class Player:
         self.discover_end = None
 
         current_stage = "Move"
+
+      self.update_arrow(group)
     elif current_stage == "Move":
       # Update the acctual player
       self.x += MOVE_BY * math.cos(self.angle)
@@ -176,8 +261,8 @@ class Player:
       self.angle = 0
 
       self.circle.x = 1000
-      self.line.x = 1000
 
+      self.update_arrow(group, 1000)
       current_stage = "Change"
     elif current_stage == "Change":
       current_player += 1
@@ -187,13 +272,13 @@ class Player:
       for player in players:
         if player.index != current_player:
           player.circle.x = 1000
-          player.line.x = 1000
+          player.update_arrow(group, 1000)
         else:
           player.circle.x = int(player.x)
-          player.line.x = int(player.x + PLAYER_RADIUS / 2)
+          player.update_arrow(group)
 
       current_stage = "Discover"
-    self.update_line(group)
+    
 
 def load(group):
   print("hi")
