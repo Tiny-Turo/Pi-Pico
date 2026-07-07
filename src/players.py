@@ -2,6 +2,8 @@ import random, math
 from adafruit_display_shapes.circle import Circle
 from adafruit_display_shapes.filled_polygon import FilledPolygon
 from adafruit_display_text.label import Label
+from adafruit_display_shapes.rect import Rect
+
 import terminalio
 
 
@@ -70,25 +72,58 @@ class Sector:
     return radius
   
 
-  def is_colliding(self, player):
+  def is_colliding(self, player, group):
+    x1 = player.x + PLAYER_RADIUS
+    y1 = player.y + PLAYER_RADIUS
+
+    # DEBUG
+    # group.append(Rect(
+    #   x=int(x1),
+    #   y=int(y1),
+    #   width=5,
+    #   height=5,
+    #   fill=0xFF0000,
+    # ))
+    
     # Calculate distance to player from centers
-    dx = self.x - player.x
-    dy = self.y - player.y
+    dx = x1 - self.x
+    dy = y1 - self.y
     distance = math.sqrt(dx * dx + dy * dy);
 
     # Calculate angle from center of sector to player center
-    angle_to_player = (math.atan2(dy, dx) + math.pi * 2) % (math.pi * 2)
+    angle_to_player = math.atan2(dy, dx)
+   
+    print("Angle To Player:" + str(angle_to_player))
+
 
     # Calculate angle from center of sector to player edges
-    dx1 = self.x - (player.x + math.cos(angle_to_player + math.pi / 2) * PLAYER_RADIUS)
-    dy1 = self.y - (player.y + math.sin(angle_to_player + math.pi / 2) * PLAYER_RADIUS);
+    dx1 = (x1 + math.cos(angle_to_player + math.pi / 2) * PLAYER_RADIUS) - self.x
+    dy1 = (y1 + math.sin(angle_to_player + math.pi / 2) * PLAYER_RADIUS) - self.y;
     ang1 = (math.atan2(dy1, dx1) + math.pi * 2) % (math.pi * 2);
 
-    dx2 = self.x - (player.x + math.cos(angle_to_player - math.pi / 2) * PLAYER_RADIUS)
-    dy2 = self.y - (player.y + math.sin(angle_to_player - math.pi / 2) * PLAYER_RADIUS);
+
+    # DEBUG
+    # group.append(Rect(
+    #   x=int((x1 + math.cos(angle_to_player + math.pi / 2) * PLAYER_RADIUS)),
+    #   y=int((y1 + math.sin(angle_to_player + math.pi / 2) * PLAYER_RADIUS)),
+    #   width=5,
+    #   height=5,
+    #   fill=0x00FF00,
+    # ))
+    dx2 = (x1 + math.cos(angle_to_player - math.pi / 2) * PLAYER_RADIUS) - self.x
+    dy2 = (y1 + math.sin(angle_to_player - math.pi / 2) * PLAYER_RADIUS) - self.y;
     ang2 = (math.atan2(dy2, dx2) + math.pi * 2) % (math.pi * 2);
 
-    is_angles_right = (ang1 < self.end_angle and ang1 > self.start_angle) or (ang2 < self.end_angle and ang2 > self.start_angle)
+    # DEBUG
+    # group.append(Rect(
+    #   x=int((x1 + math.cos(angle_to_player - math.pi / 2) * PLAYER_RADIUS)),
+    #   y=int((y1 + math.sin(angle_to_player - math.pi / 2) * PLAYER_RADIUS)),
+    #   width=5,
+    #   height=5,
+    #   fill=0x0000FF,
+    # ))
+
+    is_angles_right = (ang1 < self.end_angle and ang1 > self.start_angle) or (ang2 < self.end_angle and ang2 > self.start_angle) or (angle_to_player < self.end_angle and angle_to_player > self.start_angle)
     has_collided = (is_angles_right and distance < PLAYER_RADIUS + self.radius) or distance < PLAYER_RADIUS
 
     return has_collided
@@ -223,7 +258,20 @@ class Player:
         # Check if you've hit any players
         for player in players:
           if player.index != self.index:
-            if sector.is_colliding(player):
+            if sector.is_colliding(player, group):
+              print(sector, player)
+              player.circle.x = int(player.x)
+              if change_player_text in group: group.remove(change_player_text)
+              change_player_text = Label(
+                terminalio.FONT,
+                text= COLOR_NAME[player.index % len(COLOR_NAME)]+" has died!",
+                color=0xFFFFFF,
+                x=10,
+                y=20
+              )
+
+              group.append(change_player_text)
+              # players.remove(player)
               print("GOOD JOB: COLLISION")
 
         # Reset variables
@@ -242,7 +290,7 @@ class Player:
       for player in players:
         if player.index != self.index:
           for sector in player.area:
-            if sector.is_colliding(self):
+            if sector.is_colliding(self, group):
               print("WHOOPS: HIT AN AREA")
 
       # Update the sprite
@@ -255,7 +303,10 @@ class Player:
       self.circle.x = 1000
 
       self.update_arrow(group, 1000)
+
       current_stage = "Change"
+
+      if change_player_text in group: group.remove(change_player_text)
 
       change_player_text = Label(
         terminalio.FONT,
@@ -286,7 +337,7 @@ class Player:
 def load(group):
   print("hi")
 
-def first_round(group):  
+def first_round(group):
   for player in players:
         if player.index != current_player:
           player.circle.x = 1000
@@ -298,6 +349,7 @@ def first_round(group):
 
 def update(group):
   global change_player_text
+
 def spawn(group):
   for i in range(0, players_amount):
     players.append(Player(i, group))
