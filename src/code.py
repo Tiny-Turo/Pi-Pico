@@ -20,7 +20,7 @@ def press():
 
     if not has_started:
         players.spawn(screen.group)
-        print("Players: " + str(players.players_amount))
+        
         has_started = True
         screen.group.remove(text)
         screen.group.remove(players_amount_text)

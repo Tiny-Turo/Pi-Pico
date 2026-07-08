@@ -20,17 +20,19 @@ players = []
 PLAYER_RADIUS = 10
 MOVE_BY = 50
 
-STEP = math.pi / 48
+STEP = math.pi / 24
 
 MIN_DISCOVER_WIDTH = 10
 MAX_DISCOVER_WIDTH = math.pi * 5/8
 
 DISCOVERY_AREA = 700
 
-
 PLAYER_COLORS = [0x2D98BB,0xCFAF3C,0xD83E3E,0x883ED8,0x6BAB4B]
 AREA_COLORS = [0x3f7893,0xa18d40,0x9f3c37,0x6535a7,0x618846]
 COLOR_NAME = ["Blue", "Yellow", "Red", "Purple", "Green"]
+
+def lerp(a, b, t):
+  return a + t * (b - a)
 
 sector_draw_layer = 1
 class Sector:
@@ -48,8 +50,8 @@ class Sector:
 
   def add_sector_polygon(self, group):
     global sector_draw_layer
-    steps = 60
     sweep = abs(self.end_angle - self.start_angle)
+    steps = math.floor((sweep / STEP) * 2)
 
     d = sweep / steps
     points = [(int(self.x), int(self.y))]  # center
@@ -66,12 +68,10 @@ class Sector:
     sector_draw_layer += 1
 
 
-
   def calculate_radius_of_sector(self, angle):
     radius = math.pow((2 * DISCOVERY_AREA) / angle, 1/2)
     return radius
   
-
   def is_colliding(self, player, group):
     x1 = player.x + PLAYER_RADIUS
     y1 = player.y + PLAYER_RADIUS
@@ -91,10 +91,8 @@ class Sector:
     distance = math.sqrt(dx * dx + dy * dy);
 
     # Calculate angle from center of sector to player center
-    angle_to_player = math.atan2(dy, dx)
-   
+    angle_to_player = (math.atan2(dy, dx) + math.pi * 2) % (math.pi * 2)
     print("Angle To Player:" + str(angle_to_player))
-
 
     # Calculate angle from center of sector to player edges
     dx1 = (x1 + math.cos(angle_to_player + math.pi / 2) * PLAYER_RADIUS) - self.x
@@ -122,8 +120,20 @@ class Sector:
     #   height=5,
     #   fill=0x0000FF,
     # ))
-
-    is_angles_right = (ang1 < self.end_angle and ang1 > self.start_angle) or (ang2 < self.end_angle and ang2 > self.start_angle) or (angle_to_player < self.end_angle and angle_to_player > self.start_angle)
+    sweep = self.start_angle - self.end_angle
+    while self.start_angle < 0:
+      self.start_angle += math.pi * 2
+    self.start_angle = self.start_angle % (math.pi * 2)
+    self.end_angle = self.start_angle - sweep
+    
+    is_angles_right = False
+    tests = 30
+    for i in range(tests):
+      a = lerp(ang1, ang2, i / (tests - 1))
+      if self.start_angle <= a <= self.end_angle:
+        is_angles_right = True
+        break
+   
     has_collided = (is_angles_right and distance < PLAYER_RADIUS + self.radius) or distance < PLAYER_RADIUS
 
     return has_collided
@@ -225,7 +235,6 @@ class Player:
       if current_stage == "Change":
         return
       self.angle += add * STEP
-      self.update_arrow(group)
 
       if current_stage == "Discover":
         if (not self.discover_start == None) and (self.discover_end == None):
@@ -237,7 +246,11 @@ class Player:
             if self.sector:
               sector_draw_layer -= 1
               group.remove(self.sector.polygon)
+              
             self.sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.angle, 0x292b3d, group)
+      
+      self.update_arrow(group)
+
 
   def submit(self, group):
     global current_stage, current_player, change_player_text
@@ -246,20 +259,19 @@ class Player:
       if self.discover_start == None:
         # Set the discover start
         self.discover_start = self.angle
-        print("Discover Start: "+ str(self.discover_start))
+
       elif abs(self.discover_start - self.angle) > STEP: 
-        self.discover_end = self.angle
-        print("Discover End: "+ str(self.discover_end))
-        print("Discover Start: "+ str(self.discover_start))
+        # Set the discover end
+        self.discover_end = self.angle          
 
         sector = Sector(self.x + PLAYER_RADIUS, self.y + PLAYER_RADIUS, self.discover_start, self.discover_end, AREA_COLORS[self.index % len(AREA_COLORS)], group)
         self.area.append(sector)
 
         # Check if you've hit any players
+        has_hit = False
         for player in players:
           if player.index != self.index:
             if sector.is_colliding(player, group):
-              print(sector, player)
               player.circle.x = int(player.x)
               if change_player_text in group: group.remove(change_player_text)
               change_player_text = Label(
@@ -271,14 +283,18 @@ class Player:
               )
 
               group.append(change_player_text)
+              has_hit = True
               # players.remove(player)
+
               print("GOOD JOB: COLLISION")
 
-        # Reset variables
-        self.discover_start = None
-        self.discover_end = None
+        if not has_hit:
+          # Reset variables
+          self.discover_start = None
+          self.discover_end = None
 
-        current_stage = "Move"
+          current_stage = "Move"
+        else: current_stage = "Dead"
 
       self.update_arrow(group)
     elif current_stage == "Move":
@@ -287,36 +303,50 @@ class Player:
       self.y += MOVE_BY * math.sin(self.angle)
 
       # Check if you've hit any areas 
+      has_hit = False
       for player in players:
         if player.index != self.index:
           for sector in player.area:
             if sector.is_colliding(self, group):
+              if change_player_text in group: group.remove(change_player_text)
+              change_player_text = Label(
+                terminalio.FONT,
+                text= "You have died!",
+                color=0xFFFFFF,
+                x=10,
+                y=20
+              )
+
+              group.append(change_player_text)
+              has_hit = True
+              # players.remove(player)
               print("WHOOPS: HIT AN AREA")
 
-      # Update the sprite
-      self.circle.x = int(self.x)
-      self.circle.y = int(self.y)
+      if not has_hit:
+        # Update the sprite
+        self.circle.x = int(self.x)
+        self.circle.y = int(self.y)
 
-      # Reset the angle
-      self.angle = 0
+        # Reset the angle
+        self.angle = 0    
+        self.circle.x = 1000
 
-      self.circle.x = 1000
+        self.update_arrow(group, 1000)
 
-      self.update_arrow(group, 1000)
+        current_stage = "Change"
 
-      current_stage = "Change"
+        if change_player_text in group: group.remove(change_player_text)
 
-      if change_player_text in group: group.remove(change_player_text)
+        change_player_text = Label(
+          terminalio.FONT,
+          text= COLOR_NAME[((self.index+1) % len(players)) % len(COLOR_NAME)]+"'s turn!",
+          color=0xFFFFFF,
+          x=10,
+          y=20
+        )
 
-      change_player_text = Label(
-        terminalio.FONT,
-        text= COLOR_NAME[((self.index+1) % len(players)) % len(COLOR_NAME)]+"'s turn!",
-        color=0xFFFFFF,
-        x=10,
-        y=20
-      )
-
-      group.append(change_player_text)
+        group.append(change_player_text)
+      else: current_stage = "Dead"
     elif current_stage == "Change":
       current_player += 1
       current_player = current_player % len(players)
@@ -331,12 +361,9 @@ class Player:
           player.update_arrow(group)
 
       group.remove(change_player_text)
-      current_stage = "Discover"
-    
-
-def load(group):
-  print("hi")
-
+      current_stage = "Discover"  
+    elif current_stage == "Dead":
+      print("Oh No!")
 def first_round(group):
   for player in players:
         if player.index != current_player:
