@@ -17,15 +17,15 @@ change_player_text = None
 players = []
 
 # Variables which are the same for every player
-PLAYER_RADIUS = 10
-MOVE_BY = 50
+PLAYER_RADIUS = 5
+MOVE_BY = 24
 
 STEP = math.pi / 24
 
 MIN_DISCOVER_WIDTH = 10
 MAX_DISCOVER_WIDTH = math.pi * 5/8
 
-DISCOVERY_AREA = 700
+DISCOVERY_AREA = 350
 
 PLAYER_COLORS = [0x2D98BB,0xCFAF3C,0xD83E3E,0x883ED8,0x6BAB4B]
 AREA_COLORS = [0x3f7893,0xa18d40,0x9f3c37,0x6535a7,0x618846]
@@ -139,7 +139,7 @@ class Sector:
     return has_collided
 
 class Arrow:
-  def __init__(self, x1, y1, x2, y2, color, width=3, head_width=9, head_length=6):
+  def __init__(self, x1, y1, x2, y2, color, width=1.5, head_width=9, head_length=6):
     self.width = width
     self.head_width = head_width
     self.head_length = head_length
@@ -196,8 +196,8 @@ class Player:
   def __init__(self, i, group):
     self.index = i
 
-    self.x = random.uniform(0, 100)
-    self.y = random.uniform(0, 100)
+    self.x = random.uniform(0, 128)
+    self.y = random.uniform(0, 160)
     self.angle = 0
 
     self.area = []
@@ -224,8 +224,8 @@ class Player:
       group.remove(self.arrow.polygon)
     
     if x == None:
-      self.arrow = Arrow(int(self.x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(self.x  + PLAYER_RADIUS + MOVE_BY/2 * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY/2 * math.sin(self.angle)), self.color);
-    else: self.arrow = Arrow(int(x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(x  + PLAYER_RADIUS + MOVE_BY/2 * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY/2 * math.sin(self.angle)), self.color);
+      self.arrow = Arrow(int(self.x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(self.x  + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), self.color);
+    else: self.arrow = Arrow(int(x + PLAYER_RADIUS), int(self.y + PLAYER_RADIUS), int(x  + PLAYER_RADIUS + MOVE_BY * math.cos(self.angle)), int(self.y + PLAYER_RADIUS + MOVE_BY * math.sin(self.angle)), self.color);
  
     group.append(self.arrow.polygon)
   
